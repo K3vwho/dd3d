@@ -54,7 +54,7 @@ TEST:
 
 DATALOADER:
   TRAIN:
-    NUM_WORKERS: 12
+    NUM_WORKERS: 8
     SAMPLER: RepeatFactorTrainingSampler
     REPEAT_THRESHOLD: 0.4
 
