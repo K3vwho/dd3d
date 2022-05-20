@@ -34,6 +34,7 @@ from tridet.utils.visualization import mosaic, save_vis
 from tridet.utils.wandb import flatten_dict, log_nested_dict
 from tridet.visualizers import get_dataloader_visualizer, get_predictions_visualizer
 
+import time
 LOG = logging.getLogger('tridet')
 
 
@@ -225,7 +226,13 @@ def do_test(cfg, model, is_last=False, use_tta=False):
         mapper = get_dataset_mapper(cfg, is_train=False)
         dataloader, dataset_dicts = build_test_dataloader(cfg, dataset_name, mapper)
 
+        time_start = time.time()
         per_dataset_results = inference_on_dataset(model, dataloader, evaluator)
+        time_end = time.time()
+        print('total inference time: ', time_end - time_start, ' s.')
+        print('average time: ', (time_end - time_start) / len(dataset_dicts))
+
+
         if use_tta:
             per_dataset_results = OrderedDict({k + '-tta': v for k, v in per_dataset_results.items()})
         test_results[dataset_name] = per_dataset_results
