@@ -17,6 +17,9 @@ FE:
     NORM: FrozenBN
   OUT_FEATURES: ${.FPN.OUT_FEATURES}
 
+# helper to iterate trough multiple scenes and root directory of KITTI
+KITTI_ROOT: KITTI3D_tracking_3
+
 DD3D:
   FCOS2D:
     NORM: BN

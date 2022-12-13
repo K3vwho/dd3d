@@ -218,24 +218,45 @@ class FCOS2DLoss():
         centerness_targets = compute_ctrness_targets(box2d_reg_targets)
 
         # Denominator for all foreground losses.
-        ctrness_targets_sum = centerness_targets.sum()
+        # used for reduce_sum(ctrness_targets_sum) below, as all reduce | reduce_sum is used !!!!
+        ctrness_targets_sum = centerness_pred.sum() * 0.
+        _loss_box2d_reg = box2d_reg_pred.sum() * 0.
+        loss_centerness = centerness_pred.sum() * 0.
+        if pos_inds.numel() != 0:
+            # NOTE: The rest of losses only consider foreground pixels.
+            box2d_reg_pred = box2d_reg_pred[pos_inds]
+            box2d_reg_targets = box2d_reg_targets[pos_inds]
+            centerness_pred = centerness_pred[pos_inds]
+
+            # Compute centerness targets here using 2D regression targets of foreground pixels.
+            centerness_targets = compute_ctrness_targets(box2d_reg_targets)
+
+            # Denominator for all foreground losses.
+            ctrness_targets_sum = centerness_targets.sum()
+
+            # ----------------------
+            # 2D box regression loss
+            # ----------------------
+            _loss_box2d_reg = self.box2d_reg_loss_fn(box2d_reg_pred, box2d_reg_targets, centerness_targets)
+
+            # ---------------
+            # Centerness loss
+            # ---------------
+            loss_centerness = F.binary_cross_entropy_with_logits(
+                centerness_pred, centerness_targets, reduction="sum"
+            ) / num_pos_avg
+        # else:
+        # print(".ret", end=" ", flush=True)
+
+        # print(".red", end=" ", flush=True)
         loss_denom = max(reduce_sum(ctrness_targets_sum).item() / num_gpus, 1e-6)
-
-        # ----------------------
-        # 2D box regression loss
-        # ----------------------
-        loss_box2d_reg = self.box2d_reg_loss_fn(box2d_reg_pred, box2d_reg_targets, centerness_targets) / loss_denom
-
-        # ---------------
-        # Centerness loss
-        # ---------------
-        loss_centerness = F.binary_cross_entropy_with_logits(
-            centerness_pred, centerness_targets, reduction="sum"
-        ) / num_pos_avg
+        loss_box2d_reg = _loss_box2d_reg / loss_denom
 
         loss_dict = {"loss_cls": loss_cls, "loss_box2d_reg": loss_box2d_reg, "loss_centerness": loss_centerness}
-        extra_info = {"loss_denom": loss_denom, "centerness_targets": centerness_targets}
+        extra_info = {"loss_denom": loss_denom,
+                      "centerness_targets": centerness_targets} if pos_inds.numel() != 0 else {}
 
+        # print(".f", end=" ", flush=True)
         return loss_dict, extra_info
 
 

@@ -55,6 +55,7 @@ docker-dev:
 	nvidia-docker run --name $(PROJECT) \
 	$(DOCKER_OPTS) \
 	-v $(PWD):$(WORKSPACE) \
+	-v /home/ubuntu/Masterarbeit/object_detection/data/KITTI:$(WORKSPACE)/data/datasets/KITTI3D \
 	$(DOCKER_IMAGE) bash
 
 dist-run:

@@ -36,7 +36,6 @@ from tridet.visualizers import get_dataloader_visualizer, get_predictions_visual
 
 import time
 
-LOG = logging.getLogger('tridet')
 
 
 @hydra.main(config_path="../configs/", config_name="defaults")
@@ -56,8 +55,7 @@ def main(cfg):
 
     # generate test results
     test_results = do_test(cfg, model, is_last=True)
-    #if cfg.TEST.AUG.ENABLED:
-    #    test_results.update(do_test(cfg, model, is_last=True, use_tta=True))
+
     return test_results, cfg
 
 

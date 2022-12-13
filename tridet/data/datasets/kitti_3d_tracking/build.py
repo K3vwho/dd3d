@@ -41,17 +41,34 @@ COLORMAP = OrderedDict({
     "Misc": COLORS[7],  # gray
 })
 
+MV3D_SPLIT_KITTI_3D_REMAP = {
+    "train": "training",
+    "val": "training",
+    "test": "testing",
+    "overfit": "training",
+    "trainval": "training",
+}
 
-class KITTI3DDataset(Dataset):
+
+class KITTI3DTrackingDataset(Dataset):
     def __init__(self, root_dir, mv3d_split, class_names, sensors, box2d_from_box3d=False, max_num_items=None):
         self.root_dir = root_dir
+        self._mv3d_split = mv3d_split
+        calib_dir = os.path.join(self.root_dir, MV3D_SPLIT_KITTI_3D_REMAP[self._mv3d_split], "calib")
+        self._split = os.listdir(calib_dir)
+        self._split = [file_name.replace('.txt', '') for file_name in self._split]
+        self._split.sort()
         #with open(os.path.join(self.root_dir, "mv3d_kitti_splits", "{}.txt".format(mv3d_split))) as _f:
         #    lines = _f.readlines()
         #split = [line.rstrip("\n") for line in lines]
         #self._split = split
-        #if max_num_items is not None:
-        #    self._split = self._split[:min(len(self._split), max_num_items)]
-        #self._mv3d_split = mv3d_split
+        #frame =
+        #print(self._split)
+
+
+        if max_num_items is not None:
+            self._split = self._split[:min(len(self._split), max_num_items)]
+        self._mv3d_split = mv3d_split
 
         self.class_names = class_names
         self._name_to_id = {name: idx for idx, name in enumerate(class_names)}
@@ -77,7 +94,7 @@ class KITTI3DDataset(Dataset):
             Calibration key is string filename prefix. (i.e. 007431)
         """
         calibration_files = [
-            os.path.join(self.root_dir, "calib", f"{sample}.txt")
+            os.path.join(self.root_dir, MV3D_SPLIT_KITTI_3D_REMAP[self._mv3d_split], "calib", f"{sample}.txt")
             for sample in self._split
         ]
 
@@ -197,12 +214,12 @@ class KITTI3DDataset(Dataset):
         try:
             sample_annotations = pd.read_csv(
                 os.path.join(
-                    self.root_dir, MV3D_SPLIT_KITTI_3D_REMAP[self._mv3d_split], "label_2", "{}.txt".format(sample_id)
+                    self.root_dir, MV3D_SPLIT_KITTI_3D_REMAP[self._mv3d_split],"label_2", "{}.txt".format(sample_id)
                 ),
                 delim_whitespace=True,
                 header=None
             )
-        except pd.errors.EmptyDataError:
+        except:
             sample_annotations = pd.DataFrame(columns=[i for i in range(16)])
 
         annotations = []
@@ -269,9 +286,9 @@ class KITTI3DDataset(Dataset):
         return OrderedDict(bbox=[l, t, r, b], bbox_mode=BoxMode.XYXY_ABS)
 
 
-class KITTI3DMonocularDataset(Dataset):
+class KITTI3DTrackingMonocularDataset(Dataset):
     def __init__(self, root_dir, mv3d_split, class_names, sensors, box2d_from_box3d, max_num_items):
-        self._kitti_dset = KITTI3DDataset(root_dir, mv3d_split, class_names, sensors, box2d_from_box3d, max_num_items)
+        self._kitti_dset = KITTI3DTrackingDataset(root_dir, mv3d_split, class_names, sensors, box2d_from_box3d, max_num_items)
         self._sensors = sensors
 
     def __len__(self):
@@ -283,15 +300,15 @@ class KITTI3DMonocularDataset(Dataset):
 
 
 @functools.lru_cache(maxsize=1000)
-def build_monocular_kitti3d_dataset(
+def build_monocular_kitti3d_tracking_dataset(
     mv3d_split, root_dir, class_names=VALID_CLASS_NAMES, sensors=('camera_2', ), box2d_from_box3d=False, max_num_items=None
 ):
-    dataset = KITTI3DMonocularDataset(root_dir, mv3d_split, class_names, sensors, box2d_from_box3d, max_num_items)
+    dataset = KITTI3DTrackingMonocularDataset(root_dir, mv3d_split, class_names, sensors, box2d_from_box3d, max_num_items)
     dataset_dicts = collect_dataset_dicts(dataset)
     return dataset_dicts
 
 
-def register_kitti_3d_metadata(dataset_name, valid_class_names=VALID_CLASS_NAMES, coco_cache_dir='/tmp/'):
+def register_kitti_3d_tracking_metadata(dataset_name, valid_class_names=VALID_CLASS_NAMES, coco_cache_dir='/tmp/'):
     metadata = MetadataCatalog.get(dataset_name)
     metadata.thing_classes = valid_class_names
     metadata.thing_colors = [COLORMAP[klass] for klass in metadata.thing_classes]

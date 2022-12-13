@@ -41,11 +41,13 @@ LOG = logging.getLogger('tridet')
 
 @hydra.main(config_path="../configs/", config_name="defaults")
 def main(cfg):
+    # Initialization and loading model + checkpoint
     setup(cfg)
     dataset_names = register_datasets(cfg)
     if cfg.ONLY_REGISTER_DATASETS:
         return {}, cfg
-    LOG.info(f"Registered {len(dataset_names)} datasets:" + '\n\t' + '\n\t'.join(dataset_names))
+    LOG.info(f"Registered {len(dataset_names)} datasets:" +
+             '\n\t' + '\n\t'.join(dataset_names))
 
     model = build_model(cfg)
 
@@ -53,8 +55,9 @@ def main(cfg):
     if checkpoint_file:
         Checkpointer(model).load(checkpoint_file)
 
+    # generate test results
     test_results = do_test(cfg, model, is_last=True)
-    #if cfg.TEST.AUG.ENABLED:
+    # if cfg.TEST.AUG.ENABLED:
     #    test_results.update(do_test(cfg, model, is_last=True, use_tta=True))
     return test_results, cfg
 
@@ -64,7 +67,8 @@ def do_test(cfg, model, is_last=False, use_tta=False):
         LOG.warning("Test is disabled.")
         return {}
 
-    dataset_names = [cfg.DATASETS.TEST.NAME]  # NOTE: only support single test dataset for now.
+    # NOTE: only support single test dataset for now.
+    dataset_names = [cfg.DATASETS.TEST.NAME]
 
     if use_tta:
         LOG.info("Starting inference with test-time augmentation.")
@@ -77,32 +81,48 @@ def do_test(cfg, model, is_last=False, use_tta=False):
     test_results = OrderedDict()
     for dataset_name in dataset_names:
         # output directory for this dataset.
-        dset_output_dir = get_inference_output_dir(dataset_name, is_last=is_last, use_tta=use_tta)
+        dset_output_dir = get_inference_output_dir(
+            dataset_name, is_last=is_last, use_tta=use_tta)
 
         # What evaluators are used for this dataset?
         evaluator_names = MetadataCatalog.get(dataset_name).evaluators
         evaluators = []
         for evaluator_name in evaluator_names:
-            evaluator = get_evaluator(cfg, dataset_name, evaluator_name, dset_output_dir)
+            evaluator = get_evaluator(
+                cfg, dataset_name, evaluator_name, dset_output_dir)
             evaluators.append(evaluator)
         evaluator = DatasetEvaluators(evaluators)
 
         mapper = get_dataset_mapper(cfg, is_train=False)
-        dataloader, dataset_dicts = build_test_dataloader(cfg, dataset_name, mapper)
+        dataloader, dataset_dicts = build_test_dataloader(
+            cfg, dataset_name, mapper)
+
+        # for idx, data in enumerate(dataloader):
+        #    model.eval()
+        #    with torch.no_grad():
+        #outputs = model(data)
+        # print("output")
+        # print(idx)
+        # print(outputs)
 
         time_start = time.time()
-        per_dataset_results = inference_on_dataset(model, dataloader, evaluator)
+        per_dataset_results = inference_on_dataset(
+            model, dataloader, evaluator)
+        print(per_dataset_results)
         time_end = time.time()
         print('total inference time: ', time_end - time_start, ' s.')
         print('average time: ', (time_end - time_start) / len(dataset_dicts))
 
+        # print(per_dataset_results)
 
         if use_tta:
-            per_dataset_results = OrderedDict({k + '-tta': v for k, v in per_dataset_results.items()})
+            per_dataset_results = OrderedDict(
+                {k + '-tta': v for k, v in per_dataset_results.items()})
         test_results[dataset_name] = per_dataset_results
 
         if cfg.VIS.PREDICTIONS_ENABLED and d2_comm.is_main_process():
-            visualizer_names = MetadataCatalog.get(dataset_name).pred_visualizers
+            visualizer_names = MetadataCatalog.get(
+                dataset_name).pred_visualizers
             # Randomly (but deterministically) select what samples to visualize.
             # The samples are shared across all visualizers and iterations.
             sampled_dataset_dicts, inds = random_sample_dataset_dicts(
@@ -112,7 +132,8 @@ def do_test(cfg, model, is_last=False, use_tta=False):
             viz_images = defaultdict(dict)
             for viz_name in visualizer_names:
                 LOG.info(f"Running prediction visualizer: {viz_name}")
-                visualizer = get_predictions_visualizer(cfg, viz_name, dataset_name, dset_output_dir)
+                visualizer = get_predictions_visualizer(
+                    cfg, viz_name, dataset_name, dset_output_dir)
                 for x in tqdm(sampled_dataset_dicts):
                     sample_id = x['sample_id']
                     viz_images[sample_id].update(visualizer.visualize(x))
@@ -120,15 +141,18 @@ def do_test(cfg, model, is_last=False, use_tta=False):
             save_vis(viz_images, dset_output_dir, "visualization")
 
             if cfg.WANDB.ENABLED:
-                LOG.info(f"Uploading prediction visualization to W&B: {dataset_name}")
+                LOG.info(
+                    f"Uploading prediction visualization to W&B: {dataset_name}")
                 for sample_id in viz_images.keys():
-                    viz_images[sample_id] = mosaic(list(viz_images[sample_id].values()))
+                    viz_images[sample_id] = mosaic(
+                        list(viz_images[sample_id].values()))
                 step = get_event_storage().iter
                 wandb.log({
                     f"{dataset_name}-predictions":
-                    [wandb.Image(viz, caption=f"{sample_id}") for sample_id, viz in viz_images.items()]
+                    [wandb.Image(viz, caption=f"{sample_id}")
+                     for sample_id, viz in viz_images.items()]
                 },
-                          step=step)
+                    step=step)
 
     test_results = flatten_dict(test_results)
     log_nested_dict(test_results)

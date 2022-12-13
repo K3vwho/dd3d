@@ -237,6 +237,17 @@ class FCOS3DLoss():
         box3d_size_pred = cat([x.permute(0, 2, 3, 1).reshape(-1, 3, num_classes) for x in box3d_size])
         box3d_conf_pred = cat([x.permute(0, 2, 3, 1).reshape(-1, num_classes) for x in box3d_conf])
 
+        ## ori author got wrong here, they put it above cut
+        if pos_inds.numel() == 0:
+            losses = {
+                "loss_box3d_quat": box3d_quat_pred.sum() * 0.,
+                "loss_box3d_proj_ctr": box3d_ctr_pred.sum() * 0.,
+                "loss_box3d_depth": box3d_depth_pred.sum() * 0.,
+                "loss_box3d_size": box3d_size_pred.sum() * 0.,
+                "loss_conf3d": box3d_conf_pred.sum() * 0.
+            }
+            return losses
+
         # ----------------------
         # 3D box disentangled loss
         # ----------------------

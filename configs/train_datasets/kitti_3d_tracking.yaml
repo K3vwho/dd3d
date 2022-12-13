@@ -1,7 +1,7 @@
 defaults:
-  - tracking_train_dataset
+  - base_train_dataset
 
-NAME: kitti_3d__racking_train
+NAME: kitti_3d_tracking_train
 
 CANONICAL_BOX3D_SIZES: [
     # (width, length, height)

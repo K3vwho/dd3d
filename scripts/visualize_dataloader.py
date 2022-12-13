@@ -26,7 +26,8 @@ def main(cfg):
     dataset_names = register_datasets(cfg)
     if cfg.ONLY_REGISTER_DATASETS:
         return {}, cfg
-    LOG.info(f"Registered {len(dataset_names)} datasets:" + '\n\t' + '\n\t'.join(dataset_names))
+    LOG.info(f"Registered {len(dataset_names)} datasets:" +
+             '\n\t' + '\n\t'.join(dataset_names))
 
     if cfg.USE_TEST:
         dataset_name = cfg.DATASETS.TEST.NAME
@@ -36,12 +37,14 @@ def main(cfg):
         mapper = get_dataset_mapper(cfg, is_train=True)
         dataloader, _ = build_train_dataloader(cfg, mapper=mapper)
 
-    visualizer_names = MetadataCatalog.get(cfg.DATASETS.TRAIN.NAME).loader_visualizers
+    visualizer_names = MetadataCatalog.get(
+        cfg.DATASETS.TRAIN.NAME).loader_visualizers
     for batch_idx, batch in tqdm(enumerate(dataloader)):
         viz_images = defaultdict(dict)
         LOG.info("Press any key to continue, press 'q' to quit.")
         for viz_name in visualizer_names:
-            viz = get_dataloader_visualizer(cfg, viz_name, cfg.DATASETS.TRAIN.NAME)
+            viz = get_dataloader_visualizer(
+                cfg, viz_name, cfg.DATASETS.TRAIN.NAME)
             for idx, x in enumerate(batch):
                 viz_images[idx].update(viz.visualize(x))
 

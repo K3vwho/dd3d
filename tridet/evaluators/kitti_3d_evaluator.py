@@ -35,7 +35,7 @@ class KITTI3DEvaluator(DatasetEvaluator):
         self,
         dataset_name,
         iou_thresholds,
-        only_prepare_submission=False,
+        only_prepare_submission=True,
         output_dir=None,
         distributed=False,
     ):
